@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from config import config
+
 # parent two times to get out of src/ into project root
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,7 +41,6 @@ def executor(script: str) -> str:
         "--unshare-all",
         "--die-with-parent",
         "--new-session",
-        # TODO: what does * do? i guess it turns a list within a list into consecutive elements within the surrounding list
         *store_binds,
         "--ro-bind",
         str(PROJECT_DIR / "sandbox/prompt-files"),
@@ -75,19 +76,13 @@ def executor(script: str) -> str:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=10,
+            timeout=config["tools_config"]["script_timeout"],
             check=False,
             errors="replace",
         )
     except subprocess.TimeoutExpired:
         return "[executor] Script exceeded the 10-second timeout."
     return result.stdout[-1500:] + f"\n[exit status: {result.returncode}]"
-
-
-# TODO: once i have a loop, i will handle this one directly in it, and end the loop. i can remove this function from available_functions too. this structure is for when i need to give the agent more tools.
-
-
-# TODO: put all tool calls into a log file.
 
 
 if __name__ == "__main__":

@@ -2,13 +2,30 @@
 description = "A chill guy. Talk to me as if I was a chill turtle."
 # optionnal:
 prompt_context = "system is nixos on asahi linux (m1 max macbook pro, aarch64)"
-prompt = "Make KSA run."
+
+# to provide the prompt, the user can either pipe in the prompt, or set these two variables
+# prompt = "Make KSA run."
+prompt = "Please get KSA running, you can use fex, muvm, and request whatever else you need. it does not launch since there is an architecture mismatch: i am on aarch64, ksa is built for x86_64. fex is a fast usermode x86 and x86-64 emulator for Arm64 Linux, and muvm can run 4k page programs on a system with 16k pages like mine. "
+# and set this to true
+use_toml_prompt = true
 
 [general]
-main_model = "gemma4:e2b"
+# main_model = "gemma4:e2b"
+main_model = "gemma4:12b"
 assistant_model = "gemma4:e2b"
 decision_model = "tev1:0.8b"
 think = true
+
+[model_config]
+# max_tokens_size = 16384
+max_tokens_size = 65536
+# fixed for now, will eventually become variable depending on task.
+max_steps = 20
+max_misses = 3
+
+[tools_config]
+# max duration in seconds of a script before aborting automatically
+script_timeout = 30
 
 
 [model_prompts]
@@ -22,6 +39,14 @@ world_context = """You can use run_script to interact with your environment thro
 it is recommended to copy them into /workspace.
 /backup is writeable, but do not do any work in it. It is only available for you in case there is something you want to do, will permanently alter files,
 and you want to backup the files' previous state just in case.
+Nothing that you say will be accessible to the user; instead, provide your answers or requests through the tools available.
+If you do not have commands that are necessary to finish the task, you can ask for them with the request tool.
+You are expected to work out tools by yourself.
+Never ask the user how a command works. Instead:
+1. Run `<cmd> --help`, `man <cmd>`, or `which <cmd>` and read the output.
+2. Look in `/nix/store/*fex*/share/doc` and the project's GitHub README via curl if the network is allowed.
+3. Try the command, read the error, adjust, retry.
+Only ask the user when you need a decision (e.g. which game) or hit a permission you don't have.
 """
 
 

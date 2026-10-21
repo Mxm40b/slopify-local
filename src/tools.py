@@ -1,3 +1,4 @@
+from config import PROJECT_DIR
 from executor import *
 
 
@@ -15,9 +16,33 @@ def describe(message: str) -> str:
 
 
 def run_script(script: str):
-    """This is a tool for interacting with the filesystem and executing various commands, with available commands in $PATH."""
+    """This is a tool for interacting with the filesystem and executing various commands, with available commands in $PATH.
+    You are allowed to run commands without even knowing what arguments they expect. Learn by making mistakes."""
     return executor(script)
 
 
-available_functions = {f.__name__: f for f in (run_script, end_loop, describe)}
+def request(request_message: str, summary: str) -> None:
+    """This is a tool to ask for access to more commands, or a change in the environment.
+    Because of how the harness is made, you need to provide a summary/handoff report of what happened up to now in summary;
+    Once the user has changed the environment (or not), a new agent will have access to that summary to continue."""
+    print("\nThe model has requested a change to the environment:")
+    print(f"'{request_message}'\n")
+    with open(f"{PROJECT_DIR}/summary.txt", "w") as f:
+        f.write(summary)
+    with open(f"{PROJECT_DIR}/log", "a") as f:
+        f.write("\n\nThe agent requested a new tool.\n")
+
+
+def summarize(summary: str) -> None:
+    """This is a tool for you to summarize everything that you have done so far (handoff report)
+    for a new agent with a clean chat log to pick up the task with exactly the same prompt."""
+    with open(f"{PROJECT_DIR}/summary.txt", "w") as f:
+        f.write(summary)
+    with open(f"{PROJECT_DIR}/log", "a") as f:
+        f.write("\n\nThe agent summarized its work so far.\n")
+
+
+available_functions = {
+    f.__name__: f for f in (run_script, end_loop, describe, request, summarize)
+}
 tools = list(available_functions.values())

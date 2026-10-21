@@ -9,18 +9,19 @@
 
       agentEnv = pkgs.buildEnv {
         name = "agent-tools";
-        paths = with pkgs; [
+        paths = pkgs.stdenv.initialPath ++ (with pkgs; [
           bash
           coreutils
           gnugrep
           gnused
           findutils
-          gnutar
           box64
-          file
-          qemu
+          # qemu
           # qemu-user
-        ];
+          muvm
+          fex
+          # steam-run
+        ]);
       };
 
       closure = pkgs.closureInfo {

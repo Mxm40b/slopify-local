@@ -7,7 +7,3 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 with open("config/slopify/slopify.toml") as f:
     config = tomllib.loads(f.read())
-
-
-# def config():
-#     return config
