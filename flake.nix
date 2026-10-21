@@ -15,7 +15,11 @@
           gnugrep
           gnused
           findutils
-          tar
+          gnutar
+          box64
+          file
+          qemu
+          # qemu-user
         ];
       };
 
@@ -32,7 +36,7 @@
         # coreutils
         # findutils
         # strace
-        (python3.withPackages (ps: [ps.ollama]))
+        (python3.withPackages (ps: [ps.ollama ps.toml]))
       ];
 
 

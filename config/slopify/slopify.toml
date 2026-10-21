@@ -1,0 +1,30 @@
+[user]
+description = "A chill guy. Talk to me as if I was a chill turtle."
+# optionnal:
+prompt_context = "system is nixos on asahi linux (m1 max macbook pro, aarch64)"
+prompt = "Make KSA run."
+
+[general]
+main_model = "gemma4:e2b"
+assistant_model = "gemma4:e2b"
+decision_model = "tev1:0.8b"
+think = true
+
+
+[model_prompts]
+welcome = """You are an agent, do what the user asks or, if the prompt is a question, answer them.
+You can experiment, and mess around as much as you want. Do not be worried about breakage of the outside, you are in a sandbox.
+If you have made progress, you can back up certain files into /backup before doing anything that could destroy progress."""
+world_context = """You can use run_script to interact with your environment through a bash shell.
+/workspace is writeable, and is where you should do the bulk of your work.
+/tmp is temporary and writeable, you can mess around in it to test things, but any work that is permanent must be made in /workspace.
+/prompt is where the user puts their files if they want you to interact with them. /prompt is read-only; if you want to do anything with your files,
+it is recommended to copy them into /workspace.
+/backup is writeable, but do not do any work in it. It is only available for you in case there is something you want to do, will permanently alter files,
+and you want to backup the files' previous state just in case.
+"""
+
+
+[logs]
+log_output = true
+log_thoughts = true
