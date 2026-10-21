@@ -17,7 +17,8 @@ def describe(message: str) -> str:
 
 def run_script(script: str):
     """This is a tool for interacting with the filesystem and executing various commands, with available commands in $PATH.
-    You are allowed to run commands without even knowing what arguments they expect. Learn by making mistakes."""
+    You are allowed to run commands without even knowing what arguments they expect. Learn by making mistakes.
+    The output is trimmed, in case you don't understand the output of your commands."""
     return executor(script)
 
 
@@ -42,7 +43,9 @@ def summarize(summary: str) -> None:
         f.write("\n\nThe agent summarized its work so far.\n")
 
 
-available_functions = {
+usual_available_functions = {
     f.__name__: f for f in (run_script, end_loop, describe, request, summarize)
 }
-tools = list(available_functions.values())
+usual_tools = list(usual_available_functions.values())
+end_available_functions = {f.__name__: f for f in (end_loop, summarize)}
+end_tools = list(usual_available_functions.values())

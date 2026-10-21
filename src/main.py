@@ -10,7 +10,7 @@ from tools import *
 
 # TODO: set defaults if variables not set in slopify.toml
 MAX_TOKENS_SIZE = config["model_config"]["max_tokens_size"]
-MAX_STEPS = config["model_config"]["max_tokens_size"]
+MAX_STEPS = config["model_config"]["max_steps"]
 MAX_MISSES = config["model_config"]["max_misses"]
 
 # # this program is for agents, so 64k context or more is recommended.
@@ -30,6 +30,7 @@ def loop(prompt):
     with open("log", "a") as f:
         f.write(f'\n\n\n\n===Prompt===\n"{prompt}"\n\n')
 
+    previous_for_step_passes = 0
     while True:
         summary_exists = True
         try:
@@ -41,12 +42,17 @@ def loop(prompt):
             {"role": "system", "content": SLOPIFY_LOCAL_CONTEXT},
             # {"role": "user", "content": prompt},
         ]
-        listing = run_script("ls -la /prompt")
+        prompt_listing = run_script("ls -la /prompt")
+        workspace_listing = run_script("ls -la /workspace")
         messages.extend(
             (
                 {
                     "role": "user",
-                    "content": f"{prompt}\n\nFiles in /prompt:\n{listing}",
+                    "content": f"{prompt}\n\nFiles in /prompt:\n{prompt_listing}",
+                },
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nFiles in /workspace:\n{workspace_listing}",
                 },
                 {
                     "role": "user",
@@ -61,16 +67,17 @@ def loop(prompt):
         if summary_exists:
             messages.append(
                 {
-                    "role": "assistant",
-                    "content": f"What has already been done:\n{summary}",
+                    "role": "user",
+                    "content": f"Handoff report from your previous session (already done, don't redo it):\n{summary}",
                 }
             )
         consecutive_tool_call_misses = 0
         restart_loop = False
+        tools = usual_tools
+        available_functions = usual_available_functions
+
+        prev_n = 0
         for step in range(MAX_STEPS):
-            if restart_loop:
-                # if we need to restart the loop, we simply pass all remaining steps until the next iteration of the loop.
-                continue
             # TODO: think of a cleaner implementation for this:
             # if step % 5 == 4:
             #     print("asking to describe")
@@ -90,27 +97,17 @@ def loop(prompt):
             # print(response)
             # if response.prompt_eval_count and response.prompt_eval_duration:
             #     print(response.prompt_eval_count / (response.prompt_eval_duration / 1e9))
-            print(f"\nStep #{step}")
+            print(f"\nStep #{step + previous_for_step_passes}")
+
             n = response.prompt_eval_count
             t = response.prompt_eval_duration
             if n and t:
-                print(f"prefill: {n / (t / 1e9):.1f} tok/s ({n} tokens)")
+                print(f"prefill: {(n - prev_n) / (t / 1e9):.1f} tok/s ({n} tokens)")
+            if n:
+                prev_n = n
             messages.append(response.message)
-            if (
-                bool(response.prompt_eval_count)
-                and response.prompt_eval_count > MAX_TOKENS_SIZE * 3 / 4
-            ) or (
-                step == MAX_STEPS - MAX_MISSES
-            ):  # leave steps in case the agent doesn't use the summarize tool correctly
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": "Please drop immediately your task, and use the summarize tool to write a handoff report about everything you have done so far. Alternatively, if you have finished your task, you can use end_loop.",
-                    }
-                )
-
             with open("log", "a") as f:
-                f.write(f"\n\nStep #{step}\n")
+                f.write(f"\n\nStep #{step + previous_for_step_passes}\n")
                 if config["logs"]["log_thoughts"]:
                     th = response.message.thinking
                     if th:
@@ -119,6 +116,7 @@ def loop(prompt):
                     con = response.message.content
                     if con:
                         f.write("\nContent: \n" + con + "\n\n")
+
             if response.message.tool_calls:
                 for tc in response.message.tool_calls:
                     if tc.function.name == "end_loop":
@@ -129,7 +127,7 @@ def loop(prompt):
                             ),
                             0 if args.get("successful", False) else 1,
                         )
-                    if tc.function.name == "request":
+                    elif tc.function.name == "request":
                         try:
                             available_functions["request"](**tc.function.arguments)
                         except TypeError:
@@ -146,7 +144,7 @@ def loop(prompt):
                             "You can change the env as the agent asked, or refuse, then re-run with the same prompt. \nIf, instead, you want to start a new chat, delete `summary.txt`.",
                             1,
                         )
-                    if tc.function.name == "summarize":
+                    elif tc.function.name == "summarize":
                         try:
                             available_functions[tc.function.name](
                                 **tc.function.arguments
@@ -161,14 +159,10 @@ def loop(prompt):
                             continue
                         # the call succeeded
                         restart_loop = True
+                        previous_for_step_passes += config["model_config"]["max_steps"]
+                        break
 
-                    if consecutive_tool_call_misses > MAX_MISSES:
-                        return (
-                            f"The agent tried to use unavailable tools, or did not use any tools, {MAX_MISSES} times in a row.",
-                            # random error number lmao
-                            3,
-                        )
-                    if tc.function.name in available_functions:
+                    elif tc.function.name in available_functions:
                         consecutive_tool_call_misses = 0
                         try:
                             result = available_functions[tc.function.name](
@@ -198,6 +192,12 @@ def loop(prompt):
                                 "content": f"The tool you attempted to use, {tc.function.name} is not provided. Available tools are: {(available_functions.keys())}",
                             }
                         )
+                    if consecutive_tool_call_misses > MAX_MISSES:
+                        return (
+                            f"The agent tried to use unavailable tools, or did not use any tools, {MAX_MISSES} times in a row.",
+                            # random error number lmao
+                            3,
+                        )
             else:
                 consecutive_tool_call_misses += 1
                 messages.append(
@@ -206,6 +206,25 @@ def loop(prompt):
                         "content": f"You did not use any tools in this round. If you finished, you can use the end_loop tool. Available tools are: {(available_functions.keys())}",
                     }
                 )
+
+            if (
+                bool(response.prompt_eval_count)
+                and response.prompt_eval_count > MAX_TOKENS_SIZE * 3 / 4
+            ) or (
+                step >= MAX_STEPS - MAX_MISSES
+            ):  # leave steps in case the agent doesn't use the summarize tool correctly
+                print("asking to summarize")
+                tools = end_tools
+                available_functions = end_available_functions
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": "Attention!!! Please drop immediately your task, and use the summarize tool to write a handoff report about everything you have done so far. Alternatively, if you have finished your task, you can use end_loop. If you do not use the summarize tool, all progress will be lost (your chat history will be wiped). You can make that summary detailed enough for the next agent to continue. Doesn't matter if you're not entirely sure, just say what you have done so far.",
+                    }
+                )
+            if restart_loop:
+                break
+
             if consecutive_tool_call_misses > MAX_MISSES:
                 return (
                     f"The agent tried to use unavailable tools, or did not use any tools, {MAX_MISSES} times in a row.",
