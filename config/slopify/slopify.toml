@@ -5,23 +5,30 @@ prompt_context = "system is nixos on asahi linux (m1 max macbook pro, aarch64)"
 
 # to provide the prompt, the user can either pipe in the prompt, or set these two variables
 # prompt = "Make KSA run."
-prompt = "Please get KSA running, you can use FEX (its name is fex but the bin's name is FEX, all caps), muvm, and request whatever else you need. it does not launch since there is an architecture mismatch: i am on aarch64, ksa is built for x86_64. fex is a fast usermode x86 and x86-64 emulator for Arm64 Linux, and muvm can run 4k page programs on a system with 16k pages like mine. "
+prompt = """Please get KSA running, you can use box64, muvm, and request whatever else you need (You will likely need this). it does not launch since there is an architecture mismatch: i am on aarch64, ksa is built for x86_64. fex is a fast usermode x86 and x86-64 emulator for Arm64 Linux, and muvm can run 4k page programs on a system with 16k pages like mine. `.
+The libs you asked for were provided, if i am not mistaken (they might not be the correct ones though) in /prompt.
+"""
 # and set this to true
 use_toml_prompt = true
 
 [general]
 # main_model = "gemma4:e2b"
-main_model = "granite4.2:3b"
+# main_model = "granite4.2:8b"
+# main_model = "devstral-small-2:24b"
+# main_model = "qwen3.8:latest"
+# main_model = "gemma4:12b"
+main_model = "ornith-1.5:9b"
 assistant_model = "gemma4:e2b"
 decision_model = "tev1:0.8b"
 think = true
 
 [model_config]
-max_tokens_size = 16384
+# max_tokens_size = 16384
+max_tokens_size = 32768
 # max_tokens_size = 65536
 # fixed for now, will eventually become variable depending on task.
-max_steps = 10
-max_misses = 3
+max_steps = 30
+max_misses = 5
 
 [tools_config]
 # max duration in seconds of a script before aborting automatically

@@ -18,7 +18,8 @@ def describe(message: str) -> str:
 def run_script(script: str):
     """This is a tool for interacting with the filesystem and executing various commands, with available commands in $PATH.
     You are allowed to run commands without even knowing what arguments they expect. Learn by making mistakes.
-    The output is trimmed, in case you don't understand the output of your commands."""
+    The output is trimmed, in case you don't understand the output of your commands.
+    Let me say this again: the output is _truncated_, so pay attention if the output doesn't show something."""
     return executor(script)
 
 

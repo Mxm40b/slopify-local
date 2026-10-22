@@ -58,10 +58,10 @@ def loop(prompt):
                     "role": "user",
                     "content": f"context: {config['user']['prompt_context']}",
                 },
-                {
-                    "role": "user",
-                    "content": "Never, NEVER, ask the user how tools work. You should experiment with them and figure it out on your own.",
-                },
+                # {
+                #     "role": "user",
+                #     "content": "Never, NEVER, ask the user how tools work. You should experiment with them and figure it out on your own.",
+                # },
             )
         )
         if summary_exists:
@@ -87,6 +87,12 @@ def loop(prompt):
             #             "content": "Please use the describe tool to explain what you did in the last five steps.",
             #         }
             #     )
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"You have {config['model_config']['max_steps'] - step} steps left.",
+                }
+            )
             response: ChatResponse = chat(
                 model=config["general"]["main_model"],
                 messages=messages,

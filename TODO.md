@@ -76,3 +76,15 @@ note: only three models are actually loaded in memory; one large, one small, one
 
 
 idea: socratic questionning to verify facts a tiny bit more reliably, eg two small models prompting each other
+
+
+
+download devstral small 2
+qwen 3.8
+lfm2.5
+
+
+ornith 1 > qwen 3.6 > qwen 3.5
+ornith 1.5 = qwen 3.8 flash next
+ornith 1.5 > ornith 1
+gemma 4 > ornith

@@ -1,1 +1,43 @@
-Task: Get KSA running on aarch64 system using fex (emulator) and muvm. KSA is built for x86_64 but running on aarch64, requiring fex emulation. Available tools: muvm at /nix/store/.../muvm (found). fex source found in nix store but binary not directly accessible. tarball /prompt/ksa_linux_v2026.10.10.5554.tar.gz extracted partially due to read-only filesystem issues. No fex binary (or FEX) in typical paths. We have examined available binaries and found muvm but not a runnable fex binary. Need to locate or build fex for emulation or find alternative way to run KSA. No progress toward successful KSA launch yet.
+## TASK: Run KSA (Kingsoft Office, ELF64 x86-64) on aarch64 Asahi Linux (M1 Max, 16k→4k pages via muvm)
+
+## ENVIRONMENT
+- NixOS on Asahi Linux, aarch64 host, page size 4096 (muvm provides 4K pages to guest). /dev/kvm present, uid 1000, NO sudo, read-only fs, cannot mknod/sysctl.
+- NO network: `/dev/tcp` => "Network is unreachable"; no curl/wget/python/network tools.
+- Limited tooling on PATH; everything is in nix store:
+  - agent-tools: /nix/store/11hc7w3ysh93fczma22kq4gz9ah92g67-agent-tools/bin (bash, coreutils, grep/od)
+  - coreutils: /nix/store/dq1apsyiah48nmc4n45dpwc33k887hdn-coreutils-9.11/bin
+  - grep: /nix/store/82643wb56lminz3a4b6gk92d2g4ydwks-gnugrep-3.12/bin
+  - muvm: /nix/store/zjhw3j7smidpyhbfqsf1was5lnkfw2kk-muvm-0.6.0/bin/muvm
+  - fex: /nix/store/wvdnbkky3hkn4y260yl6mpd53rghmfv8-fex-2608/bin/FEX
+  - box64: /nix/store/jc6jkyg1d50mckngxshrpphn71v52c0s-box64-0.4.4/bin/box64 (store has ONLY binary, no lib32 shim libs)
+  - passt: /nix/store/zmjsmbmpqv64b19jq77518qkp1p092yz-passt/bin/passt
+  - socat: /nix/store/a64164x5yrkgmm42vccw708ly9awyjnb-socat/bin/socat
+
+## KSA
+- /workspace/KSA — ELF64 PIE, x86-64, interpreter /lib64/ld-linux-x86-64.so.2.
+- NEEDED (binary grep): libc.so.6, libstdc++.so.6, libgcc_s.so.1, libm.so.6, ld-linux-x86-64.so.2.
+
+## BLOCKER (unrecoverable here): NO x86_64 libc exists anywhere
+- The ONLY libc.so.6 on disk is /nix/store/hx9wvdx2l59iahwf9nmrx7rwkm6cymgs-glibc-2.44-25/lib/libc.so.6 — but its e_machine is 0xb7 (aarch64), the HOST's own glibc. Wrong arch.
+- No x86_64 ld-linux-x86-64.so.2 anywhere (only arm64 ld).
+- libstdc++/libgcc_s present (from gcc-16.2.0-lib) but transitively need libc.so.6.
+- /prompt/x86libs: broken symlinks pointing to host's own glibc (aarch64) — WRONG libs, as user suspected.
+
+## WHY each tool fails
+- box64: tested directly on host → identical "Loading needed libs" error; box64 runs on arm64 but must load x86_64 libc.
+- muvm: boots fine (KVM, virtio, ran sleep 3 + box64), but box64 inside VM still lacks x86_64 libc. VM is NOT the bottleneck.
+- fex: bundles NO x86 libc/ld; its FEXRootFSFetcher downloads x86 rootfs — but network is DOWN.
+- Cannot build x86_64 glibc: no network, no python, read-only fs, no sudo.
+
+## PROVEN WORKING (baseline)
+- `muvm --passt-socket $SOCK sleep 3` → exit 0, real VM boots via KVM.
+- `muvm --passt-socket $SOCK /workspace/KSA` → VM boots, box64 starts, but exits 255 on "Loading needed libs" (the lib blocker, not VM).
+
+## WHAT WOULD UNBLOCK IT (pick one)
+1) Provide a real x86_64 libs tree (box64-libs / rootfs, or multiarch x86_64 glibc + ld-linux-x86-64.so.2) as real files.
+2) Restore network so FEX fetches its x86 rootfs, OR run on a machine that already has x86 shim libs.
+
+## FILES
+- /workspace/ksa.log — box64-in-VM run showing lib errors
+- /workspace/muvm.log — prior successful real-VM boot
+- /workspace/rbox.log, r*.log — prior experiment logs
